@@ -6,7 +6,6 @@ from app.core.dependencies import get_current_user
 from app.db.database import get_db
 from app.models.repository import Repository
 from app.models.user import User
-#from app.services.github import get_repository_contents
 from app.services.github import (
     get_repository_contents,
     get_file_content,
@@ -18,6 +17,24 @@ router = APIRouter(
     prefix="/repositories",
     tags=["Repositories"],
 )
+
+
+@router.get("")
+def get_user_repositories(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    repositories = db.scalars(
+        select(Repository)
+        .where(
+            Repository.imported_by == current_user.id
+        )
+        .order_by(
+            Repository.created_at.desc()
+        )
+    ).all()
+
+    return repositories
 
 
 @router.get("/{repository_id}/files")
@@ -54,6 +71,7 @@ def get_repository_files(
         )
 
     return contents
+
 
 @router.get("/{repository_id}/file")
 def get_repository_file(
@@ -102,6 +120,7 @@ def get_repository_file(
         "sha": file_data["sha"],
         "content": file_data.get("decoded_content"),
     }
+
 
 @router.post("/{repository_id}/analyze")
 def analyze_repository_file(
